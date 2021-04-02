@@ -131,6 +131,16 @@ def spirv_compile():
         "numba_dppy/ocl/atomics/atomic_ops.spir",
         "numba_dppy/ocl/atomics/atomic_ops.bc",
     ]
+
+    try:
+        clang_check = [compiler, "--version"]
+        subprocess.check_call(clang_check, stderr=subprocess.STDOUT, shell=False)
+    except:
+        print(
+            f"Compiler ({compiler}) does not work. Make sure that oneAPI compiler environment is activated."
+        )
+        sys.exit(1)
+
     subprocess.check_call(clang_args, stderr=subprocess.STDOUT, shell=False)
     subprocess.check_call(spirv_args, stderr=subprocess.STDOUT, shell=False)
 
