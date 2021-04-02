@@ -94,14 +94,21 @@ def _get_cmdclass():
 
 
 def spirv_compile():
+    try:
+        ONEAPI_ROOT = os.environ["ONEAPI_ROOT"]
+    except:
+        print("ONEAPI_ROOT is not defined.")
+        sys.exit(1)
+
     if IS_LIN:
-        compiler = os.path.join(
-            os.environ.get("ONEAPI_ROOT"), "compiler/latest/linux", "bin/clang"
-        )
-    if IS_WIN:
-        compiler = os.path.join(
-            os.environ.get("ONEAPI_ROOT"), "compiler/latest/windows", "bin/clang.exe"
-        )
+        platform = "linux"
+    elif IS_WIN:
+        platform = "windows"
+    else:
+        print("Unknown platform. Platform should be Linux or Windows.")
+        sys.exit(1)
+
+    compiler = os.path.join(ONEAPI_ROOT, "compiler/latest", platform, "bin/clang")
     clang_args = [
         compiler,
         "-flto",
