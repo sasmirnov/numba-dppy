@@ -12,29 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function, absolute_import
 import copy
-from collections import namedtuple
-
-from .dppy_passbuilder import DPPYPassBuilder
-from numba.core.typing.templates import ConcreteTemplate
-from numba.core import types, compiler, ir
-from numba.core.typing.templates import AbstractTemplate
 import ctypes
-from types import FunctionType
 from inspect import signature
+from types import FunctionType
 
 import dpctl
 import dpctl.memory as dpctl_mem
 import dpctl.program as dpctl_prog
 import numpy as np
+from numba.core import compiler, ir, types
+from numba.core.compiler import CompilerBase, DefaultPassBuilder
+from numba.core.typing.templates import AbstractTemplate, ConcreteTemplate
+
+from numba_dppy.config import DEBUG
+from numba_dppy.dppy_parfor_diagnostics import ExtendedParforDiagnostics
 
 from . import spirv_generator
-
-from numba.core.compiler import DefaultPassBuilder, CompilerBase
-from numba_dppy.dppy_parfor_diagnostics import ExtendedParforDiagnostics
-from numba_dppy.config import DEBUG
-
+from .dppy_passbuilder import DPPYPassBuilder
 
 _NUMBA_DPPY_READ_ONLY = "read_only"
 _NUMBA_DPPY_WRITE_ONLY = "write_only"
@@ -51,7 +46,7 @@ def _raise_no_device_found_error():
 
 def _raise_invalid_kernel_enqueue_args():
     error_message = (
-        "Incorrect number of arguments for enquing dppy.kernel. "
+        "Incorrect number of arguments for enqueuing dppy.kernel. "
         "Usage: device_env, global size, local size. "
         "The local size argument is optional."
     )
@@ -59,7 +54,9 @@ def _raise_invalid_kernel_enqueue_args():
 
 
 def get_ordered_arg_access_types(pyfunc, access_types):
-    # Construct a list of access type of each arg according to their position
+    """
+    Construct a list of access type of each arg according to their position.
+    """
     ordered_arg_access_types = []
     sig = signature(pyfunc, follow_wrapped=False)
     for idx, arg_name in enumerate(sig.parameters):
@@ -82,7 +79,6 @@ class DPPYCompiler(CompilerBase):
         self.state.parfor_diagnostics = ExtendedParforDiagnostics()
         self.state.metadata["parfor_diagnostics"] = self.state.parfor_diagnostics
         if not self.state.flags.force_pyobject:
-            # print("Numba-DPPY [INFO]: Using Numba-DPPY pipeline")
             pms.append(DPPYPassBuilder.define_nopython_pipeline(self.state))
         if self.state.status.can_fallback or self.state.flags.force_pyobject:
             pms.append(DefaultPassBuilder.define_objectmode_pipeline(self.state))
@@ -129,8 +125,6 @@ def compile_with_dppy(pyfunc, return_type, args, debug):
         )
     else:
         assert 0
-    # Linking depending libraries
-    # targetctx.link_dependencies(cres.llvm_module, cres.target_context.linking)
     library = cres.library
     library.finalize()
 
@@ -148,11 +142,11 @@ def compile_kernel(sycl_queue, pyfunc, args, access_types, debug=False):
     cres = compile_with_dppy(pyfunc, None, args, debug=debug)
     func = cres.library.get_function(cres.fndesc.llvm_func_name)
     kernel = cres.target_context.prepare_ocl_kernel(func, cres.signature.args)
-    # The kernel objet should have a reference to the target context it is compiled for.
-    # This is needed as we intend to shape the behavior of the kernel down the line
-    # depending on the target context. For example, we want to link our kernel object
-    # with implementation containing atomic operations only when atomic operations
-    # are being used in the kernel.
+    # The kernel objet should have a reference to the target context it is
+    # compiled for. This is needed as we intend to shape the behavior of the
+    # kernel down the line depending on the target context. For example, we
+    # want to link our kernel object with implementation containing atomic
+    # operations only when atomic operations are being used in the kernel.
     oclkern = DPPYKernel(
         context=cres.target_context,
         sycl_queue=sycl_queue,
@@ -179,11 +173,8 @@ def compile_kernel_parfor(sycl_queue, func_ir, args, args_with_addrspaces, debug
         print("compile_kernel_parfor signature", cres.signature.args)
         for a in cres.signature.args:
             print(a, type(a))
-    #            if isinstance(a, types.npytypes.Array):
-    #                print("addrspace:", a.addrspace)
 
     kernel = cres.target_context.prepare_ocl_kernel(func, cres.signature.args)
-    # kernel = cres.target_context.prepare_ocl_kernel(func, args_with_addrspaces)
     oclkern = DPPYKernel(
         context=cres.target_context,
         sycl_queue=sycl_queue,
@@ -191,7 +182,6 @@ def compile_kernel_parfor(sycl_queue, func_ir, args, args_with_addrspaces, debug
         name=kernel.name,
         argtypes=args_with_addrspaces,
     )
-    # argtypes=cres.signature.args)
     return oclkern
 
 
@@ -273,7 +263,7 @@ class DPPYFunction(object):
 def _ensure_valid_work_item_grid(val, sycl_queue):
 
     if not isinstance(val, (tuple, list, int)):
-        error_message = "Cannot create work item dimension from " "provided argument"
+        error_message = "Cannot create work-item dimension from provided argument"
         raise ValueError(error_message)
 
     if isinstance(val, int):
@@ -586,10 +576,9 @@ class JitDPPYKernel(DPPYKernelBase):
         argtypes = tuple([self.typingctx.resolve_argument_type(a) for a in args])
         q = None
         kernel = None
-        # we were previously using the _env_ptr of the device_env, the sycl_queue
-        # should be sufficient to cache the compiled kernel for now, but we should
-        # use the device type to cache such kernels
-        # key_definitions = (self.sycl_queue, argtypes)
+        # we were previously using the _env_ptr of the device_env, the
+        # sycl_queue should be sufficient to cache the compiled kernel for now,
+        # but we should use the device type to cache such kernels
         key_definitions = argtypes
         result = self.definitions.get(key_definitions)
         if result:
