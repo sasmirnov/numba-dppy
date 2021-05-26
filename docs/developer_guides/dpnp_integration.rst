@@ -50,14 +50,14 @@ Architecture
 ````````````
 
 `numba-dppy` modifies default `Numba` compiler pipeline and extends it with
-:class:`DPPYRewriteOverloadedNumPyFunctions` pass.
+:class:`~numba_dppy.rename_numpy_functions_pass.DPPYRewriteOverloadedNumPyFunctions` pass.
 
-The main work is performed in :class:`RewriteNumPyOverloadedFunctions` used by the pass.
+The main work is performed in :class:`~numba_dppy.rename_numpy_functions_pass.RewriteNumPyOverloadedFunctions` used by the pass.
 It rewrites call for `NumPy` function in following way:
 
     :samp:`np.sum(a)` -> :samp:`numba_dppy.dpnp.sum(a)`
 
-:mod:`numba_dppy.dpnp` contains stub functions (defined as classes) like following:
+:class:`~numba_dppy.dpnp_glue.stubs.dpnp` contains stub functions (defined as classes) like following:
 
 .. code-block:: python
 
@@ -90,7 +90,7 @@ For more details about testing the integration see :ref:`dpnp-integration-tests`
 Places to update
 ````````````````
 
-1. :file:`numba_dppy/dpnp_glue/stubs.py`: Add new class to :class:`stubs.dpnp` class.
+1. :file:`numba_dppy/dpnp_glue/stubs.py`: Add new class to :class:`~numba_dppy.dpnp_glue.stubs.dpnp` class.
 2. :file:`numba_dppy/dpnp_glue/dpnp_fptr_interface.pyx`: Update items in :class:`DPNPFuncName` enum.
 3. :file:`numba_dppy/dpnp_glue/dpnp_fptr_interface.pyx`: Update if statements in :func:`get_DPNPFuncName_from_str` function.
 4. Add :samp:`@overload(stubs.dpnp.{YOUR_FUNCTION})` in one of the :file:`numba_dppy/dpnp_glue/{*}.py` modules or create new.
