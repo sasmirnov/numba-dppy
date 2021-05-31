@@ -59,7 +59,7 @@ pip install sphinx autodoc recommonmark sphinx-rtd-theme sphinxcontrib-apidoc
 
 Generate HTML:
 ```bash
-cd docs && make html
+cd docs && SPHINXOPTS=-W make html
 ```
 
 Run HTTP server:
